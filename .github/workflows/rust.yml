@@ -7,7 +7,7 @@ jobs:
     - uses: actions/checkout@v1
     - name: Build
       working-directory: rust
-      run: cargo build --verbose
+      run: cargo build --verbose --examples
     - name: Run tests
       working-directory: rust
       run: cargo test --verbose --examples
