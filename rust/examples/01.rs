@@ -36,10 +36,7 @@ fn part1() -> Result<u32, Box<dyn Error>> {
 }
 
 fn part2() -> Result<u32, Box<dyn Error>> {
-    let result = parse_input()?
-        .iter()
-        .map(|m| better_fuel(*m))
-        .sum();
+    let result = parse_input()?.iter().map(|m| better_fuel(*m)).sum();
     Ok(result)
 }
 
