@@ -17,13 +17,11 @@ fn compute(input: Vec<usize>) -> Vec<usize> {
     let mut program = input;
     let mut i = 0;
     loop {
-        let op = program[i];
-        let args = program.get(i + 1..i + 4);
-        match (op, args) {
-            (1, Some(&[arg1, arg2, arg3])) => {
+        match program.get(i..i + 4) {
+            Some(&[1, arg1, arg2, arg3]) => {
                 program[arg3] = program[arg1] + program[arg2];
             }
-            (2, Some(&[arg1, arg2, arg3])) => {
+            Some(&[2, arg1, arg2, arg3]) => {
                 program[arg3] = program[arg1] * program[arg2];
             }
             _ => {
