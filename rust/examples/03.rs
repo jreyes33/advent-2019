@@ -44,7 +44,7 @@ struct Wire {
 }
 
 impl Wire {
-    fn new(input: &WireInput) -> Self {
+    fn new(input: &[Segment]) -> Self {
         let mut points = HashSet::new();
         let mut x = 0;
         let mut y = 0;
