@@ -8,6 +8,12 @@ jobs:
     - name: Build
       working-directory: rust
       run: cargo build --verbose --examples
+    - name: Check code format
+      working-directory: rust
+      run: cargo fmt -- --check
+    - name: Run clippy
+      working-directory: rust
+      run: cargo clippy --examples -- --forbid warnings
     - name: Run tests
       working-directory: rust
       run: cargo test --verbose --examples
