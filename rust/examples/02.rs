@@ -54,7 +54,7 @@ fn part2() -> Result<usize, Box<dyn Error>> {
             }
         }
     }
-    Err(Box::from("No inputs produced expected output"))
+    Err(From::from("No inputs produced expected output"))
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
