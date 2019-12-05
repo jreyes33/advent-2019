@@ -1,5 +1,7 @@
 # advent-2019
 
+[![Rust CI](https://github.com/jreyes33/advent-2019/workflows/Rust/badge.svg)](https://github.com/jreyes33/advent-2019/actions?query=workflow%3ARust)
+
 My solutions to [Advent of Code 2019](https://adventofcode.com/2019)
 
 ## Running Rust Solutions
