@@ -1,7 +1,10 @@
 [package]
-name = "advent-2019"
+name = "advent_2019"
 version = "0.1.0"
 authors = ["Jonathan Reyes <j@jreyes.org>"]
 edition = "2018"
+
+[lib]
+name = "advent_2019"
 
 [dependencies]
