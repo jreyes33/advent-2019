@@ -40,7 +40,7 @@ pub struct Execution {
 impl Execution {
     pub fn new(program_arg: Vec<i64>, inputs_arg: Vec<i64>) -> Self {
         let mut program = program_arg.clone();
-        program.resize(program_arg.len() + 100, 0);
+        program.resize(program_arg.len() + 150, 0);
         Execution {
             program,
             inputs: inputs_arg.into(),
@@ -66,18 +66,28 @@ impl Execution {
         loop {
             let op = Self::parse_instruction(self.program[self.i])?;
             match op {
-                Sum(mode1, mode2, _) => {
-                    let idx = self.program[self.i + 3] as usize;
+                Sum(mode1, mode2, mode3) => {
+                    // TODO: remove duplication
+                    let idx = match mode3 {
+                        Relative => self.program[self.i + 3] + self.relative_base,
+                        _ => self.program[self.i + 3],
+                    } as usize;
                     self.program[idx] = self.get(1, mode1) + self.get(2, mode2);
                     self.i += 4;
                 }
-                Mult(mode1, mode2, _) => {
-                    let idx = self.program[self.i + 3] as usize;
+                Mult(mode1, mode2, mode3) => {
+                    let idx = match mode3 {
+                        Relative => self.program[self.i + 3] + self.relative_base,
+                        _ => self.program[self.i + 3],
+                    } as usize;
                     self.program[idx] = self.get(1, mode1) * self.get(2, mode2);
                     self.i += 4;
                 }
-                In(_) => {
-                    let idx = self.program[self.i + 1] as usize;
+                In(mode1) => {
+                    let idx = match mode1 {
+                        Relative => self.program[self.i + 1] + self.relative_base,
+                        _ => self.program[self.i + 1],
+                    } as usize;
                     if let Some(input) = self.inputs.pop_front() {
                         self.program[idx] = input;
                     } else {
@@ -103,8 +113,11 @@ impl Execution {
                         self.i += 3;
                     }
                 }
-                LessThan(mode1, mode2, _) => {
-                    let idx = self.program[self.i + 3] as usize;
+                LessThan(mode1, mode2, mode3) => {
+                    let idx = match mode3 {
+                        Relative => self.program[self.i + 3] + self.relative_base,
+                        _ => self.program[self.i + 3],
+                    } as usize;
                     self.program[idx] = if self.get(1, mode1) < self.get(2, mode2) {
                         1
                     } else {
@@ -112,8 +125,11 @@ impl Execution {
                     };
                     self.i += 4;
                 }
-                Equals(mode1, mode2, _) => {
-                    let idx = self.program[self.i + 3] as usize;
+                Equals(mode1, mode2, mode3) => {
+                    let idx = match mode3 {
+                        Relative => self.program[self.i + 3] + self.relative_base,
+                        _ => self.program[self.i + 3],
+                    } as usize;
                     self.program[idx] = if self.get(1, mode1) == self.get(2, mode2) {
                         1
                     } else {
@@ -269,6 +285,12 @@ mod tests {
             109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
         ];
         assert_eq!(program.clone(), compute(program, vec![]).unwrap());
+    }
+
+    #[test]
+    fn test_relative_input() {
+        let program = vec![109, 3, 203, 2, 104, 0, 99];
+        assert_eq!(vec![42], compute(program, vec![42]).unwrap());
     }
 
     #[test]
