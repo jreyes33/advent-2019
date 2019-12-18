@@ -1,23 +1,23 @@
-use std::error::Error;
+use advent_2019::Result;
 use std::fs::File;
 use std::io::prelude::*;
 
-fn parse_input() -> Result<String, Box<dyn Error>> {
+fn parse_input() -> Result<String> {
     let mut contents = String::new();
     File::open("../inputs/02-input.txt")?.read_to_string(&mut contents)?;
     Ok(contents)
 }
 
-fn part1() -> Result<u32, Box<dyn Error>> {
+fn part1() -> Result<u32> {
     parse_input()?;
     Ok(1)
 }
 
-fn part2() -> Result<u32, Box<dyn Error>> {
+fn part2() -> Result<u32> {
     Ok(2)
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     println!("{}", part1()?);
     println!("{}", part2()?);
     Ok(())
