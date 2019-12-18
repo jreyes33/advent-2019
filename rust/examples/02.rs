@@ -1,14 +1,14 @@
 use advent_2019::intcode::{compute_get_at, parse_input};
 use advent_2019::Result;
 
-fn part1() -> Result<i32> {
+fn part1() -> Result<i64> {
     let mut program = parse_input("../inputs/02-input.txt")?;
     program[1] = 12;
     program[2] = 2;
     Ok((compute_get_at(program, vec![], 0))?)
 }
 
-fn part2() -> Result<i32> {
+fn part2() -> Result<i64> {
     let input = parse_input("../inputs/02-input.txt")?;
     for i in 0..100 {
         for j in 0..100 {

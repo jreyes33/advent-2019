@@ -39,13 +39,13 @@ impl Iterator for Permutations {
     }
 }
 
-fn max_amp_signal(program: Vec<i32>) -> Result<(i32, Vec<usize>)> {
-    let mut max_output = std::i32::MIN;
+fn max_amp_signal(program: Vec<i64>) -> Result<(i64, Vec<usize>)> {
+    let mut max_output = std::i64::MIN;
     let mut max_phase_settings = vec![];
     for phase_settings in permutations(0, 5) {
         let mut outputs = vec![0];
         for phase_setting in &phase_settings {
-            let inputs = vec![*phase_setting as i32, *outputs.get(0).ok_or("no output")?];
+            let inputs = vec![*phase_setting as i64, *outputs.get(0).ok_or("no output")?];
             outputs = compute(program.clone(), inputs)?;
         }
         let output = outputs.get(0).ok_or("no output")?;
@@ -57,13 +57,13 @@ fn max_amp_signal(program: Vec<i32>) -> Result<(i32, Vec<usize>)> {
     Ok((max_output, max_phase_settings))
 }
 
-fn max_feedback_signal(program: Vec<i32>) -> Result<(i32, Vec<usize>)> {
-    let mut max_output = std::i32::MIN;
+fn max_feedback_signal(program: Vec<i64>) -> Result<(i64, Vec<usize>)> {
+    let mut max_output = std::i64::MIN;
     let mut max_phase_settings = vec![];
     for phase_settings in permutations(5, 5) {
         let mut execs: Vec<_> = phase_settings
             .iter()
-            .map(|phase_setting| Execution::new(program.clone(), vec![*phase_setting as i32]))
+            .map(|phase_setting| Execution::new(program.clone(), vec![*phase_setting as i64]))
             .collect();
         let mut outputs = vec![0];
         for i in (0..execs.len()).cycle() {
@@ -84,13 +84,13 @@ fn max_feedback_signal(program: Vec<i32>) -> Result<(i32, Vec<usize>)> {
     Ok((max_output, max_phase_settings))
 }
 
-fn part1() -> Result<i32> {
+fn part1() -> Result<i64> {
     let program = parse_input("../inputs/07-input.txt")?;
     let (max_output, _max_phase_settings) = max_amp_signal(program)?;
     Ok(max_output)
 }
 
-fn part2() -> Result<i32> {
+fn part2() -> Result<i64> {
     let program = parse_input("../inputs/07-input.txt")?;
     let (max_output, _max_phase_settings) = max_feedback_signal(program)?;
     Ok(max_output)

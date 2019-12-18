@@ -1,6 +1,7 @@
 use self::Mode::*;
 use self::Op::*;
 use crate::Result;
+use std::collections::VecDeque;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -13,12 +14,14 @@ enum Op {
     JumpIfFalse(Mode, Mode),
     LessThan(Mode, Mode, Mode),
     Equals(Mode, Mode, Mode),
+    AdjustRelBase(Mode),
     Halt,
 }
 
 enum Mode {
     Position,
     Immediate,
+    Relative,
 }
 
 impl Default for Mode {
@@ -27,34 +30,26 @@ impl Default for Mode {
     }
 }
 
-impl Mode {
-    fn get(&self, program: &[i32], i: usize) -> i32 {
-        match self {
-            Immediate => program[i],
-            Position => {
-                let idx = program[i] as usize;
-                program[idx]
-            }
-        }
-    }
-}
-
 pub struct Execution {
-    program: Vec<i32>,
-    inputs: Vec<i32>,
+    program: Vec<i64>,
+    inputs: VecDeque<i64>,
     i: usize,
+    relative_base: i64,
 }
 
 impl Execution {
-    pub fn new(program: Vec<i32>, inputs: Vec<i32>) -> Self {
+    pub fn new(program_arg: Vec<i64>, inputs_arg: Vec<i64>) -> Self {
+        let mut program = program_arg.clone();
+        program.resize(program_arg.len() + 100, 0);
         Execution {
             program,
-            inputs,
+            inputs: inputs_arg.into(),
             i: 0,
+            relative_base: 0,
         }
     }
 
-    pub fn program_at(&self, idx: usize) -> Result<i32> {
+    pub fn program_at(&self, idx: usize) -> Result<i64> {
         if let Some(n) = self.program.get(idx) {
             Ok(*n)
         } else {
@@ -62,57 +57,55 @@ impl Execution {
         }
     }
 
-    pub fn add_input(&mut self, input: i32) {
-        self.inputs.push(input);
+    pub fn add_input(&mut self, input: i64) {
+        self.inputs.push_back(input);
     }
 
-    pub fn run(&mut self) -> Result<Vec<i32>> {
-        let prog = &mut self.program;
+    pub fn run(&mut self) -> Result<Vec<i64>> {
         let mut outputs = vec![];
-        let mut inputs_iter = self.inputs.drain(..);
         loop {
-            let op = Self::parse_instruction(prog[self.i])?;
+            let op = Self::parse_instruction(self.program[self.i])?;
             match op {
                 Sum(mode1, mode2, _) => {
-                    let idx = prog[self.i + 3] as usize;
-                    prog[idx] = mode1.get(&prog, self.i + 1) + mode2.get(&prog, self.i + 2);
+                    let idx = self.program[self.i + 3] as usize;
+                    self.program[idx] = self.get(1, mode1) + self.get(2, mode2);
                     self.i += 4;
                 }
                 Mult(mode1, mode2, _) => {
-                    let idx = prog[self.i + 3] as usize;
-                    prog[idx] = mode1.get(&prog, self.i + 1) * mode2.get(&prog, self.i + 2);
+                    let idx = self.program[self.i + 3] as usize;
+                    self.program[idx] = self.get(1, mode1) * self.get(2, mode2);
                     self.i += 4;
                 }
                 In(_) => {
-                    let idx = prog[self.i + 1] as usize;
-                    if let Some(input) = inputs_iter.next() {
-                        prog[idx] = input;
+                    let idx = self.program[self.i + 1] as usize;
+                    if let Some(input) = self.inputs.pop_front() {
+                        self.program[idx] = input;
                     } else {
                         return Ok(outputs);
                     }
                     self.i += 2;
                 }
                 Out(mode1) => {
-                    outputs.push(mode1.get(&prog, self.i + 1));
+                    outputs.push(self.get(1, mode1));
                     self.i += 2;
                 }
                 JumpIfTrue(mode1, mode2) => {
-                    if mode1.get(&prog, self.i + 1) != 0 {
-                        self.i = mode2.get(&prog, self.i + 2) as usize;
+                    if self.get(1, mode1) != 0 {
+                        self.i = self.get(2, mode2) as usize;
                     } else {
                         self.i += 3;
                     }
                 }
                 JumpIfFalse(mode1, mode2) => {
-                    if mode1.get(&prog, self.i + 1) == 0 {
-                        self.i = mode2.get(&prog, self.i + 2) as usize;
+                    if self.get(1, mode1) == 0 {
+                        self.i = self.get(2, mode2) as usize;
                     } else {
                         self.i += 3;
                     }
                 }
                 LessThan(mode1, mode2, _) => {
-                    let idx = prog[self.i + 3] as usize;
-                    prog[idx] = if mode1.get(&prog, self.i + 1) < mode2.get(&prog, self.i + 2) {
+                    let idx = self.program[self.i + 3] as usize;
+                    self.program[idx] = if self.get(1, mode1) < self.get(2, mode2) {
                         1
                     } else {
                         0
@@ -120,20 +113,38 @@ impl Execution {
                     self.i += 4;
                 }
                 Equals(mode1, mode2, _) => {
-                    let idx = prog[self.i + 3] as usize;
-                    prog[idx] = if mode1.get(&prog, self.i + 1) == mode2.get(&prog, self.i + 2) {
+                    let idx = self.program[self.i + 3] as usize;
+                    self.program[idx] = if self.get(1, mode1) == self.get(2, mode2) {
                         1
                     } else {
                         0
                     };
                     self.i += 4;
                 }
+                AdjustRelBase(mode1) => {
+                    self.relative_base += self.get(1, mode1);
+                    self.i += 2;
+                }
                 Halt => return Ok(outputs),
             }
         }
     }
 
-    fn parse_instruction(instruction: i32) -> Result<Op> {
+    fn get(&self, offset: usize, mode: Mode) -> i64 {
+        match mode {
+            Immediate => self.program[self.i + offset],
+            Relative => {
+                let idx = (self.relative_base + self.program[self.i + offset]) as usize;
+                self.program[idx]
+            }
+            Position => {
+                let idx = self.program[self.i + offset] as usize;
+                self.program[idx]
+            }
+        }
+    }
+
+    fn parse_instruction(instruction: i64) -> Result<Op> {
         let opcode = instruction % 100;
         let mut modescode = instruction / 100;
         let mut modes = vec![];
@@ -142,6 +153,7 @@ impl Execution {
             let mode = match modescode % 10 {
                 0 => Position,
                 1 => Immediate,
+                2 => Relative,
                 weird_modecode => {
                     return Err(format!("Not a valid modecode: {}", weird_modecode).into());
                 }
@@ -182,6 +194,7 @@ impl Execution {
                 modes_iter.next().unwrap_or_default(),
                 modes_iter.next().unwrap_or_default(),
             ),
+            9 => AdjustRelBase(modes_iter.next().unwrap_or_default()),
             99 => Halt,
             weird_opcode => {
                 return Err(format!("Not a valid opcode: {}", weird_opcode).into());
@@ -191,18 +204,18 @@ impl Execution {
     }
 }
 
-pub fn compute_get_at(program_arg: Vec<i32>, inputs: Vec<i32>, idx: usize) -> Result<i32> {
+pub fn compute_get_at(program_arg: Vec<i64>, inputs: Vec<i64>, idx: usize) -> Result<i64> {
     let mut execution = Execution::new(program_arg, inputs);
     execution.run()?;
     execution.program_at(idx)
 }
 
-pub fn compute(program_arg: Vec<i32>, inputs: Vec<i32>) -> Result<Vec<i32>> {
+pub fn compute(program_arg: Vec<i64>, inputs: Vec<i64>) -> Result<Vec<i64>> {
     let mut execution = Execution::new(program_arg, inputs);
     execution.run()
 }
 
-pub fn parse_input(path: &str) -> Result<Vec<i32>> {
+pub fn parse_input(path: &str) -> Result<Vec<i64>> {
     let mut contents = String::new();
     File::open(path)?.read_to_string(&mut contents)?;
     let numbers = contents
@@ -248,5 +261,25 @@ mod tests {
         let program = parse_input("../inputs/05-example.txt").unwrap();
         let inputs = vec![8];
         assert_eq!(vec![1000], compute(program, inputs).unwrap());
+    }
+
+    #[test]
+    fn test_quine() {
+        let program = vec![
+            109, 1, 204, -1, 1001, 100, 1, 100, 1008, 100, 16, 101, 1006, 101, 0, 99,
+        ];
+        assert_eq!(program.clone(), compute(program, vec![]).unwrap());
+    }
+
+    #[test]
+    fn test_large_numbers() {
+        let program = vec![104, 1125899906842624, 99];
+        assert_eq!(vec![1125899906842624], compute(program, vec![]).unwrap());
+    }
+
+    #[test]
+    fn test_other_large_numbers() {
+        let program = vec![1102, 34915192, 34915192, 7, 4, 7, 99, 0];
+        assert_eq!(vec![1219070632396864], compute(program, vec![]).unwrap());
     }
 }
