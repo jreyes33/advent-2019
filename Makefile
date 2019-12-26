@@ -21,4 +21,4 @@ clippy:
 
 test:
 	cd rust
-	cargo test --verbose --release --all-targets
+	cargo test --verbose --all-targets
