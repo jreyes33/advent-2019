@@ -40,7 +40,8 @@ pub struct Execution {
 impl Execution {
     pub fn new(program_arg: Vec<i64>, inputs_arg: Vec<i64>) -> Self {
         let mut program = program_arg.clone();
-        program.resize(program_arg.len() + 150, 0);
+        // TODO: resize dynamically
+        program.resize(program_arg.len() + 500, 0);
         Execution {
             program,
             inputs: inputs_arg.into(),
